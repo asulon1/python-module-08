@@ -3,10 +3,10 @@
 #                                                      :::      ::::::::    #
 #  construct.py                                      :+:      :+:    :+:    #
 #                                                  +:+ +:+         +:+      #
-#  By: asulon <asulon@student.42nice.fr>         +#+  +:+       +#+         #
+#  By: asulon <asulon@student.42.fr>             +#+  +:+       +#+         #
 #                                              +#+#+#+#+#+   +#+            #
 #  Created: 2026/04/23 16:25:35 by asulon          #+#    #+#               #
-#  Updated: 2026/04/24 02:27:06 by asulon          ###   ########.fr        #
+#  Updated: 2026/04/24 16:33:04 by asulon          ###   ########.fr        #
 #                                                                           #
 # ************************************************************************* #
 
@@ -23,9 +23,10 @@ def main():
 
     print(f"MATRIX STATUS: {matrix_status}\n")
     print(f"Current Python: {sys.executable}")
+    print(f"Virtual Environment: {os.environ.get('VIRTUAL_ENV_PROMPT')}")
 
     if not is_virtual:
-        print("WARNING: You're in the global environment!"
+        print("\nWARNING: You're in the global environment!\n"
               "The machines can see everything you install.\n")
         print("To enter the construct, run: \n "
               "python -m venv matrix_env\n"
@@ -33,10 +34,10 @@ def main():
               "matrix_env/Scripts/activate # On Windows\n")
         print("Then run this program again")
     else:
-        pass
-        # print(is_virtual)
-        # print(sys.prefix)
-        # print(sys.base_exec_prefix)
+        print(f"Environment Path: {os.environ.get('VIRTUAL_ENV')}\n")
+        print("SUCCESS: You're in an isolated environment!\n"
+              "Safe to install packages without affecting the global system\n")
+        print(f"Package installation path: {os.environ}\n")
 
 
 if __name__ == "__main__":
