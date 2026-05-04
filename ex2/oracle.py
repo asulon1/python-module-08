@@ -1,154 +1,102 @@
-#!/usr/bin/env python3
-"""Accessing the Mainframe: secure configuration with environment variables."""
+# ************************************************************************* #
+#                                                                           #
+#                                                      :::      ::::::::    #
+#  oracle.py                                         :+:      :+:    :+:    #
+#                                                  +:+ +:+         +:+      #
+#  By: asulon <asulon@student.42nice.fr>         +#+  +:+       +#+         #
+#                                              +#+#+#+#+#+   +#+            #
+#  Created: 2026/05/04 22:14:58 by asulon          #+#    #+#               #
+#  Updated: 2026/05/04 22:17:46 by asulon          ###   ########.fr        #
+#                                                                           #
+# ************************************************************************* #
 
 import os
-import sys
+from typing import Any
 from dotenv import load_dotenv
 
 
-REQUIRED_VARS = (
-    "DATABASE_URL",
-    "API_KEY",
-    "LOG_LEVEL",
-    "ZION_ENDPOINT",
-)
-VALID_MODES = {"development", "production"}
-
-
-def locate_env_file() -> str:
-    """Return the path to .env next to this script."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(script_dir, ".env")
-
-
-def load_configuration() -> dict:
-    """Load environment variables and return normalized configuration."""
-    env_path = locate_env_file()
-    env_loaded = load_dotenv(dotenv_path=env_path, override=False)
-
-    mode = os.getenv("MATRIX_MODE", "development").strip().lower()
-    if mode not in VALID_MODES:
-        print(
-            f"[WARN] Invalid MATRIX_MODE '{mode}'. Falling back to 'development'.",
-            file=sys.stderr,
-        )
-        mode = "development"
+def load_configuration() -> dict[str, Any]:
+    load_dotenv()
 
     config = {
-        "MATRIX_MODE": mode,
-        "DATABASE_URL": os.getenv("DATABASE_URL", "").strip(),
-        "API_KEY": os.getenv("API_KEY", "").strip(),
-        "LOG_LEVEL": os.getenv("LOG_LEVEL", "").strip(),
-        "ZION_ENDPOINT": os.getenv("ZION_ENDPOINT", "").strip(),
-        "ENV_FILE_LOADED": env_loaded,
-        "ENV_FILE_PATH": env_path,
+        "MATRIX_MODE": os.getenv("MATRIX_MODE"),
+        "DATABASE_URL": os.getenv("DATABASE_URL"),
+        "API_KEY": os.getenv("API_KEY"),
+        "LOG_LEVEL": os.getenv("LOG_LEVEL"),
+        "ZION_ENDPOINT": os.getenv("ZION_ENDPOINT"),
     }
+
     return config
 
 
-def validate_config(config: dict) -> list:
-    """Return missing variable names from required configuration."""
-    missing = []
-    for key in REQUIRED_VARS:
-        if not config.get(key):
-            missing.append(key)
-    return missing
-
-
-def describe_database(database_url: str, mode: str) -> str:
-    """Produce a human-readable database status."""
-    if not database_url:
-        return "Missing DATABASE_URL"
-    if mode == "development" and "sqlite" in database_url:
-        return "Connected to local instance"
-    if mode == "production":
-        return "Connected to production cluster"
-    return "Connected"
-
-
-def describe_api_access(api_key: str) -> str:
-    """Report API authentication status."""
-    if not api_key:
-        return "Missing API_KEY"
-    return "Authenticated"
-
-
-def describe_zion_network(endpoint: str, mode: str) -> str:
-    """Report endpoint/network status with mode context."""
-    if not endpoint:
-        return "Offline (missing ZION_ENDPOINT)"
-    if mode == "production":
-        return f"Online (secure channel -> {endpoint})"
-    return f"Online (dev relay -> {endpoint})"
-
-
-def has_production_overrides() -> bool:
-    """Detect if any required variables are provided directly via process env."""
-    watched_vars = ("MATRIX_MODE",) + REQUIRED_VARS
-    for key in watched_vars:
-        if key in os.environ:
-            return True
-    return False
-
-
-def is_env_ignored() -> bool:
-    """Check if .env is ignored in local gitignore."""
-    gitignore_path = os.path.join(os.path.dirname(
-        os.path.abspath(__file__)), ".gitignore")
-    if not os.path.exists(gitignore_path):
-        return False
-
-    with open(gitignore_path, "r", encoding="utf-8") as file:
-        lines = [line.strip() for line in file]
-
-    return ".env" in lines
-
-
-def main() -> int:
-    """Program entrypoint."""
-    print("ORACLE STATUS: Reading the Matrix...")
-
-    config = load_configuration()
-    missing = validate_config(config)
-
-    print("Configuration loaded:")
-    print(f"Mode: {config['MATRIX_MODE']}")
-    print(
-        f"Database: {describe_database(config['DATABASE_URL'], config['MATRIX_MODE'])}")
-    print(f"API Access: {describe_api_access(config['API_KEY'])}")
-    print(f"Log Level: {config['LOG_LEVEL'] or 'Missing LOG_LEVEL'}")
-    print(
-        f"Zion Network: {describe_zion_network(config['ZION_ENDPOINT'], config['MATRIX_MODE'])}"
-    )
-
-    if config["ENV_FILE_LOADED"]:
-        print(f"Source: Loaded .env from {config['ENV_FILE_PATH']}")
-    else:
-        print("Source: .env not found, using system environment only")
+def validate_config(config: dict[str, Any]) -> bool:
+    missing = [key for key, value in config.items() if not value]
 
     if missing:
-        print("\n[WARN] Missing required configuration:")
+        print("WARNING: Missing configuration variables:")
         for key in missing:
-            print(f"  - {key}")
-        print("Provide the missing values in .env or as environment variables.")
+            print(f" - {key}")
+        print("Using fallback defaults where possible...\n")
+
+    return len(missing) == 0
+
+
+def display_status(config: dict[str, Any]) -> None:
+    print("ORACLE STATUS: Reading the Matrix...\n")
+    print("Configuration loaded:")
+
+    mode = config["MATRIX_MODE"] or "undefined"
+
+    print(f"Mode: {mode}")
+
+    if config["DATABASE_URL"]:
+        if mode == "production":
+            print("Database: Connected to production cluster")
+        else:
+            print("Database: Connected to local instance")
+    else:
+        print("Database: Not configured")
+
+    if config["API_KEY"]:
+        print("API Access: Authenticated")
+    else:
+        print("API Access: Missing key")
+
+    print(f"Log Level: {config['LOG_LEVEL'] or 'INFO (default)'}")
+
+    if config["ZION_ENDPOINT"]:
+        if mode == "production":
+            print("Zion Network: Secure channel established")
+        else:
+            print("Zion Network: Online")
+    else:
+        print("Zion Network:  Unreachable")
 
     print("\nEnvironment security check:")
-    print("[OK] No hardcoded secrets detected")
-    print(
-        "[OK] .env file properly configured"
-        if is_env_ignored()
-        else "[WARN] Add '.env' to .gitignore to avoid leaking secrets"
-    )
-    print(
-        "[OK] Production overrides available"
-        if has_production_overrides()
-        else "[INFO] No explicit environment overrides detected"
-    )
 
-    print("The Oracle sees all configurations.")
+    if config["API_KEY"] and "dev" in config["API_KEY"].lower():
+        print("[WARNING] Development API key detected")
+    else:
+        print("[OK] No hardcoded secrets detected")
 
-    return 0
+    if os.path.exists(".env"):
+        print("[OK] .env file properly configured")
+    else:
+        print("[WARNING] No .env file found")
+
+    if mode == "production":
+        print("[OK] Production overrides active")
+    else:
+        print("[OK] Development mode active")
+
+    print("\nThe Oracle sees all configurations.")
+
+
+def main() -> None:
+    config = load_configuration()
+    validate_config(config)
+    display_status(config)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()
